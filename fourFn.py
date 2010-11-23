@@ -42,7 +42,7 @@ def BNF():
                            Optional( point + Optional( Word( nums ) ) ) +
                            Optional( e + Word( "+-"+nums, nums ) ) )
         ident = Word(alphas, alphas+nums+"_$")
-     
+
         plus  = Literal( "+" )
         minus = Literal( "-" )
         mult  = Literal( "*" )
@@ -83,6 +83,7 @@ fn  = { "sin" : math.sin,
         "sgn" : lambda a: abs(a)>epsilon and cmp(a,0) or 0}
 def evaluateStack( s ):
     op = s.pop()
+    # print "op: " + op
     if op == 'unary -':
         return -evaluateStack( s )
     if op in "+-*/^":
@@ -100,6 +101,12 @@ def evaluateStack( s ):
     else:
         return float( op )
 
+def simpleEval(s):
+    global exprStack
+    exprStack = []
+    results = BNF().parseString( s )
+    return evaluateStack( exprStack[:] )
+
 if __name__ == "__main__":
     
     def test( s, expVal ):
@@ -112,36 +119,38 @@ if __name__ == "__main__":
         else:
             print s+"!!!", val, "!=", expVal, results, "=>", exprStack
 
-    test( "9", 9 )
-    test( "-9", -9 )
-    test( "--9", 9 )
-    test( "-E", -math.e )
-    test( "9 + 3 + 6", 9 + 3 + 6 )
-    test( "9 + 3 / 11", 9 + 3.0 / 11 )
-    test( "(9 + 3)", (9 + 3) )
-    test( "(9+3) / 11", (9+3.0) / 11 )
-    test( "9 - 12 - 6", 9 - 12 - 6 )
-    test( "9 - (12 - 6)", 9 - (12 - 6) )
-    test( "2*3.14159", 2*3.14159 )
-    test( "3.1415926535*3.1415926535 / 10", 3.1415926535*3.1415926535 / 10 )
-    test( "PI * PI / 10", math.pi * math.pi / 10 )
-    test( "PI*PI/10", math.pi*math.pi/10 )
-    test( "PI^2", math.pi**2 )
-    test( "round(PI^2)", round(math.pi**2) )
-    test( "6.02E23 * 8.048", 6.02E23 * 8.048 )
-    test( "e / 3", math.e / 3 )
-    test( "sin(PI/2)", math.sin(math.pi/2) )
-    test( "trunc(E)", int(math.e) )
-    test( "trunc(-E)", int(-math.e) )
-    test( "round(E)", round(math.e) )
-    test( "round(-E)", round(-math.e) )
-    test( "E^PI", math.e**math.pi )
-    test( "2^3^2", 2**3**2 )
-    test( "2^3+2", 2**3+2 )
-    test( "2^9", 2**9 )
-    test( "sgn(-2)", -1 )
-    test( "sgn(0)", 0 )
-    test( "sgn(0.1)", 1 )
+    print simpleEval("10*10-32")
+    # test( "PI^2 - SIN(PI/2)", math.pi**2 - math.sin(math.pi/2))
+    # test( "9", 9 )
+    # test( "-9", -9 )
+    # test( "--9", 9 )
+    # test( "-E", -math.e )
+    # test( "9 + 3 + 6", 9 + 3 + 6 )
+    # test( "9 + 3 / 11", 9 + 3.0 / 11 )
+    # test( "(9 + 3)", (9 + 3) )
+    # test( "(9+3) / 11", (9+3.0) / 11 )
+    # test( "9 - 12 - 6", 9 - 12 - 6 )
+    # test( "9 - (12 - 6)", 9 - (12 - 6) )
+    # test( "2*3.14159", 2*3.14159 )
+    # test( "3.1415926535*3.1415926535 / 10", 3.1415926535*3.1415926535 / 10 )
+    # test( "PI * PI / 10", math.pi * math.pi / 10 )
+    # test( "PI*PI/10", math.pi*math.pi/10 )
+    # test( "PI^2", math.pi**2 )
+    # test( "round(PI^2)", round(math.pi**2) )
+    # test( "6.02E23 * 8.048", 6.02E23 * 8.048 )
+    # test( "e / 3", math.e / 3 )
+    # test( "sin(PI/2)", math.sin(math.pi/2) )
+    # test( "trunc(E)", int(math.e) )
+    # test( "trunc(-E)", int(-math.e) )
+    # test( "round(E)", round(math.e) )
+    # test( "round(-E)", round(-math.e) )
+    # test( "E^PI", math.e**math.pi )
+    # test( "2^3^2", 2**3**2 )
+    # test( "2^3+2", 2**3+2 )
+    # test( "2^9", 2**9 )
+    # test( "sgn(-2)", -1 )
+    # test( "sgn(0)", 0 )
+    # test( "sgn(0.1)", 1 )
 
 
 """
