@@ -1,130 +1,20 @@
 import random
-import re
-import fourFn
 import csv
-
-# Simulation Constants
-NUM_SIMULATIONS=10000
-SPLIT_CHARACTERS = '[ +-/*]'
-NUMERIC_RE = r"[0-9]+(\.[0-9]+)?"
-
-# Base Classes for Simulation
-class SimpleValue(object):
-    def __init__(self, name, units, comments=None):
-        object.__init__(self)
-        self.name = name
-        self.units = units
-        self.comments = comments
-        self.calculated_values = []
-        self.calculated = False
-
-    def calc(self):
-        raise Exception("no calc function defined")
-
-class RandomValue(SimpleValue):
-    def __init__(self, name, units, gen, comments=None):
-        SimpleValue.__init__(self, name, units, comments)
-        self.gen = gen
-
-    def calc(self, iterations=NUM_SIMULATIONS):
-        self.calculated = True
-        self.calculated_values = [self.gen.get() for x in xrange(NUM_SIMULATIONS)]
-
-class RandomNumber(object):
-    def __init__(self):
-        object.__init__(self)
-
-    def get(self):
-        raise Exception("no get function defined")
-
-class RandomNormal(RandomNumber):
-    def __init__(self, mean, stdev):
-        RandomNumber.__init__(self)
-        self.mean = mean
-        self.stdev = stdev
-
-    def get(self):
-        return random.normalvariate(self.mean, self.stdev)
-
-class RandomTriangular(RandomNumber):
-    def __init__(self, low, med, high):
-        RandomNumber.__init__(self)
-        self.low = low
-        self.med = med
-        self.high = high
-
-    def get(self):
-        return random.triangular(self.low, self.med, self.high)
-
-class RandomUniform(RandomNumber):
-    def __init__(self, low, high):
-        RandomNumber.__init__(self)
-        self.low = low
-        self.high = high
-
-    def get(self):
-        return random.uniform(self.low, self.high)
-
-class RandomFixed(RandomNumber):
-    def __init__(self, val):
-        object.__init__(self)
-        self.val = val
-
-    def get(self):
-        return self.val
-
-class CalculatedValue(SimpleValue):
-    def __init__(self, name, units, equation, comments=None):
-        SimpleValue.__init__(self, name, units, comments)
-        self.equation = equation
-        self.variables = None
-
-    def calc(self, rvs, cvs):
-        """
-        This is horribly inefficient for calculation right now as it generates
-        and reparses an equation for each calculation.  I just don't want to
-        write a better calculator right now.
-        """
-        if self.variables == None:
-            self.variables = {}
-            varnames = [x for x in re.split(SPLIT_CHARACTERS, self.equation) if len(x) > 0]
-            for x in varnames:
-                if rvs.has_key(x):
-                    self.variables[x] = rvs[x]
-                elif cvs.has_key(x):
-                    self.variables[x] = cvs[x]
-                elif re.match(NUMERIC_RE, x):
-                    pass
-                else:
-                    raise Exception("Variable: %s not found", x)
-        if False not in [x.calculated for x in self.variables.itervalues()]:
-            keys = self.variables.keys()
-            keys.sort(key=lambda x: len(x), reverse=True)
-
-            for iter in xrange(NUM_SIMULATIONS):
-                tmpEquation = self.equation
-                for key in keys:
-                    tmpEquation = tmpEquation.replace(key, unicode(self.variables[key].calculated_values[iter]))
-                self.calculated_values.append(fourFn.simpleEval(tmpEquation))
-            self.calculated = True
-            return True
-        else:
-            return False
-
+from stochasticsim import RandomValue, RandomFixed, RandomNormal, RandomUniform, RandomTriangular, CalculatedValue, NUM_SIMULATIONS
 
 # container for the calculated and random values
 cvs = {}
 rvs = {}
 
 # Assumptions -- Feel free to tinker with these
-rvs["value_of_human_life"] = RandomValue("Value of a Human Life",
+rvs["value_human_life"] = RandomValue("Value of a Human Life",
                                   "Dollars",
                                   RandomFixed(6900000),
                                   "Source: EPA 2008")
 
 rvs["risk_vpi"] = RandomValue("Risk of Dying from a Violent Passenger Incident",
                        "Percentage",
-                       RandomNormal(22.0/1000000000.0, 3.0),
+                       RandomNormal(22.0/1000000000.0, 3.0/1000000000.0),
                        """Source: http://www.schneier.com/blog/archives/2010/01/nate_silver_on.html.
                           Uncertainty added by me""")
 
@@ -153,20 +43,104 @@ rvs["fatalities_mile"] = RandomValue("Fatalities Per Mile Driven in the United S
                               RandomNormal(1.13/100000000.0, 0.1/100000000.0),
                               """Source: http://www-fars.nhtsa.dot.gov/Main/index.aspx""")
 
+rvs["ait_success_rate"] = RandomValue("Success rate of AIT scanners at preventing terrorist attacks",
+                                      "Percentage",
+                                      RandomUniform(0.50, 0.80),
+                                      """Source: my own estimate (WAG)""")
+
 rvs["ait_scanner_cost"] = RandomValue("Cost of Installing an AIT Scanner",
                                "Dollars",
                                RandomUniform(70000,200000),
                                """Source: http://www.csmonitor.com/Business/2010/1119/TSA-body-scanners-safety-upgrade-or-stimulus-boondoggle""")
 
+rvs["percentage_ait_screening"] = RandomValue("Percentage of passengers experiencing AIT screening",
+                                              "Percentage",
+                                              # RandomTriangular(0.17, 0.25, 0.40),
+                                              RandomUniform(0.17, 0.40), # I'd like to use the triangular, but Python 2.5 on my mac doesn't support it
+                                              """Source: http://boardingarea.com/blogs/flyingwithfish/2010/11/23/will-you-encounter-a-tsa-whole-body-scanner-statistically-no/
+
+                                                 This source looks strictly at the number of security lanes, not
+                                                 the proportion of passengers those lanes handle.  As most of
+                                                 the airports in the largest metropolitan areas already have the
+                                                 scanners, I take his 17% as a lower bound.""")
+
+rvs["percentage_ait_devices_backscatter"] = RandomValue("Percentage of AIT devices that utilize backscatter x-ray technology",
+                                                        "Percentage",
+                                                        # RandomTriangular(0.3, 0.5, 0.75),
+                                                        RandomUniform(0.3, 0.75), # see above comment about Mac python version
+                                                        """Source: http://www.flyertalk.com/forum/travel-safety-security/1138014-complete-list-airports-whole-body-imaging-advanced-imaging-technology-scanner.html
+
+                                                           This list frequently updates and sometimes MMWD may be identified as backscatter.""")
+
+rvs["passenger_exposure_per_screening"] = RandomValue("Passenger Exposure per Screening",
+                                                      "micro Sv/screening",
+                                                      RandomUniform(0.20,0.80),
+                                                      """Source: http://www.public.asu.edu/~atppr/RPD-Final-Form.pdf
+                                                         Mandated max is 0.25uSv/screening, however Peter Rez claims up to 0.80uSv/screening in this paper""")
+
+rvs["risk_cancer_per_micro_sv"] = RandomValue("Risk of Fatal Cancer per Micro Sv of Exposure",
+                                              "Percentage/micro Sv",
+                                              RandomNormal(1/12500000, 1/125000000),
+                                              """Source: http://www.slideshare.net/fovak/health-effects-of-radiation-exposure-presentation (slide 76)
+                                                 other documents also indicate that there is no safe level of exposure for fatal cancers
+                                                 and that they seem to follow a mostly linear response.
+
+                                                 uncertainty added by me
+
+                                                 FWIW, 1 hour of flying is about 0.01mSv""")
+
 # put your equations here
 
 cvs["number_passengers_driving"]  = CalculatedValue("Number of passengers who actually choose to drive",
-                                                    "Persons",
+                                                    "Persons/Year",
                                                     "passenger_enplanements * percentage_passengers_driving")
 cvs["number_new_driving_fatalities"] = CalculatedValue("Number of additional fatalities from new drivers",
-                                                       "Persons",
+                                                       "Persons/Year",
                                                        "number_passengers_driving * flight_distance * 2 * fatalities_mile",
                                                        "Flight distance multipled by two because people need to drive home")
+cvs["cost_new_driving_fatalities"] = CalculatedValue("Expected code of a new driving fatalities in a year",
+                                                     "Dollars/Year",
+                                                     "number_new_driving_fatalities * value_human_life")
+
+cvs["expected_nvpi_fatalities"] = CalculatedValue("Expected number of fatalities from Non-Violent Passenger Incidences in a Year",
+                                                  "Persons/Year",
+                                                  "risk_nvpi * passenger_enplanements")
+cvs["cost_nvpi_fatalities"] = CalculatedValue("Expected cost of NVPI in a year",
+                                              "Dollars/Year",
+                                              "expected_nvpi_fatalities * value_human_life")
+
+cvs["expected_vpi_fatalities"] = CalculatedValue("Expected number of fatalities from Violent Passenger Incidents in a year",
+                                                 "Persons",
+                                                 "risk_vpi * passenger_enplanements")
+cvs["cost_vpi_fatalities"] = CalculatedValue("Expected cost of a VPI in a year",
+                                             "Dollars/Year",
+                                             "expected_vpi_fatalities * value_human_life")
+
+cvs["expected_cancer_fatalities"] = CalculatedValue("Expected number of fatal cancers caused by scanning in a year",
+                                                    "Persons/Year",
+                                                    "passenger_enplanements * passenger_exposure_per_screening * percentage_ait_screening * percentage_ait_devices_backscatter * risk_cancer_per_micro_sv",
+                                                    """In this case only a small percentage of individuals are actually
+                                                       exposed to x-ray radiation through backscatter devices.  First
+                                                       they need to be exposed to AIT, then they need to be exposed
+                                                       backscatter""")
+
+cvs["expected_ait_vpi_fatalities"] = CalculatedValue("Expected number of fatalities from Violent Passenger Incidences in a year with AIT",
+                                                     "Persons/Year",
+                                                     "risk_vpi * ( 1 - ait_success_rate ) * passenger_enplanements * percentage_ait_screening + risk_vpi * passenger_enplanements * ( 1 - percentage_ait_screening )",
+                                                     """The official line is that for those airports without AIT screening,
+                                                        nothing has changed.  I can confirm this based on my experiences at
+                                                        HPN, LGA, and MSP (lanes without security) as of November 2010.""")
+
+cvs["increase_ait_fatalities"] = CalculatedValue("Increase in fatalities as a result of AIT",
+                                                 "Persons/Year",
+                                                 "number_new_driving_fatalities + expected_cancer_fatalities - (expected_vpi_fatalities - expected_ait_vpi_fatalities)",
+                                                 """As of right now this does not take into account the decrease in cancer from passengers
+                                                    choosing not to fly or opting out.""")
+
+cvs["net_cost_ait"] = CalculatedValue("Net cost of AIT devices",
+                                      "Dollars/Year",
+                                      "increase_ait_fatalities * value_human_life")
+
 
 # rest of this is simulation stuff, you shouldn't need to modify much here
 random.seed()
@@ -195,4 +169,3 @@ for x in xrange(NUM_SIMULATIONS):
     thisrow = thisrow + [cvs[y].calculated_values[x] for y in keys]
     csvwriter.writerow(thisrow)
 f.close()
-
