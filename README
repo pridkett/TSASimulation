@@ -1,0 +1,22 @@
+TSA Simulation
+==============
+
+Copyright (c) 2010 Patrick Wagstrom
+patrick@wagstrom.net
+
+This is a simple little program that I whipped up to model a set of linked
+random variables and their relations.  The core of the system, stochasticsim.py
+will probably be broken off to some other library in the future.
+
+It's licensed under the MIT X11 license.  I'm not sure about the license of
+fourfn.py. At some point I'll need to write my own parser that can handle the
+random variables and get a nice speed increase.
+
+Things to Do
+------------
+
+* Eliminate the distinction between Random Variables and Calculated values in
+the source code (rvs and cvs).
+* Improve the parser to support variable lookup natively and hopefully get a
+nice speed increase.
+* Integrate with a web frontend (Webalytica)
