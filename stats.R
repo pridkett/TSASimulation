@@ -35,6 +35,13 @@ cumHist <- function(indata, filename, ylab="Cumulative Probability",
     	title(sub=sprintf(subtext,
   	    	              midvalue10, midvalue25, midvalue50, midvalue75, midvalue90))
   	}
+
+	# draw to the other indicator lines
+	for (x in c(0.1, 0.25, 0.5, 0.75, 0.9)) {
+		quantpoint <- quantile(indata, probs=x)
+		lines(x=c(0, quantpoint, quantpoint), y=c(x, x, -2), lty=2, lwd=1, col="#777777")
+	}
+	
   	dev.off()
   	return(h)
 }
