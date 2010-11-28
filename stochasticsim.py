@@ -97,6 +97,42 @@ class RandomFixed(RandomNumber):
     def get(self):
         return self.val
 
+class RandomTabular(RandomNumber):
+    """
+    Represents a random value that is based on a tabular outcome.  This is
+    most useful for situations where there are dramatic outcomes relative
+    to rare chance.  For example, periodic terrorist attacks.
+    """
+    # FIXME: I believe that Python may have a random routine built in that
+    # could address this sort of random number generation
+    def __init__(self, table):
+        """
+        @param table: a set of tuples of either (chance, value) or (chance, RandomNumber)
+        """
+        self.table = table
+
+        totalChance = sum([x[0] for x in self.table])
+        if totalChance > 1:
+            raise Exception("Total chance of events is greater than 1.")
+
+        # create the lookup table for the random number generator
+        self.sumchances = []
+        for val in self.table:
+            if len(self.sumchances) == 0:
+                self.sumchances.append(val[0])
+            else:
+                self.sumchances.append(val[0] + self.sumchances[-1])
+
+    # FIXME: this is probably overly complex 
+    def get(self):
+        thisval = random.random()
+        for key, val in enumerate(self.sumchances):
+            if thisval < val:
+                if isinstance(self.table[key][1], RandomNumber):
+                    return self.table[key][1].get()
+                return self.table[key][1]
+        return 0.0
+
 class CalculatedValue(SimpleValue):
     def __init__(self, name, units, equation, comments=None):
         SimpleValue.__init__(self, name, units, comments)
