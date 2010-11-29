@@ -99,7 +99,7 @@ rvs["passenger_exposure_per_screening"] = RandomValue("Passenger Exposure per Sc
 
 rvs["risk_cancer_per_micro_sv"] = RandomValue("Risk of Fatal Cancer per Micro Sv of Exposure",
                                               "Percentage/micro Sv",
-                                              RandomNormal(1/12500000, 1/125000000),
+                                              RandomNormal(1.0/12500000, 1.0/125000000),
                                               """Source: http://www.slideshare.net/fovak/health-effects-of-radiation-exposure-presentation (slide 76)
                                                  other documents also indicate that there is no safe level of exposure for fatal cancers
                                                  and that they seem to follow a mostly linear response.
