@@ -19,9 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-import random
-import csv
-from stochasticsim import RandomValue, RandomFixed, RandomNormal, RandomUniform, RandomTriangular, CalculatedValue, NUM_SIMULATIONS
+from stochasticsim import RandomValue, RandomFixed, RandomNormal, RandomUniform, RandomTriangular, CalculatedValue, NUM_SIMULATIONS, Simulation
 
 # container for the calculated and random values
 cvs = {}
@@ -163,30 +161,8 @@ cvs["net_cost_ait"] = CalculatedValue("Net cost of AIT devices",
                                       "increase_ait_fatalities * value_human_life")
 
 
-# rest of this is simulation stuff, you shouldn't need to modify much here
-random.seed()
-
-for key, val in rvs.iteritems():
-    print "Calculating: %s" % (key)
-    val.calc()
-
-while False in [x.calculated for x in cvs.itervalues()]:
-    calculated_variables = []
-    for key, val in cvs.iteritems():
-        if val.calculated == False:
-            print "Calculating: %s" % (key)
-            calculated_variables.append(val.calc(rvs, cvs))
-    if not(calculated_variables) or True not in calculated_variables:
-        raise Exception("Stalemate!")
-
-print "Dumping data to sim.csv"
-f = open("sim.csv", "wb")
-csvwriter = csv.writer(f, delimiter=" ")
-rvkeys = rvs.keys()
-keys = cvs.keys()
-csvwriter.writerow(rvkeys + keys)
-for x in xrange(NUM_SIMULATIONS):
-    thisrow = [rvs[y].calculated_values[x] for y in rvkeys]
-    thisrow = thisrow + [cvs[y].calculated_values[x] for y in keys]
-    csvwriter.writerow(thisrow)
-f.close()
+sim = Simulation()
+[sim.add_variable(key, val) for key, val in cvs.iteritems()]
+[sim.add_variable(key, val) for key, val in rvs.iteritems()]
+sim.run()
+sim.save_output("sim2.csv")

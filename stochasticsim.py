@@ -21,7 +21,8 @@ THE SOFTWARE.
 """
 import random
 import re
-import fourFn
+import equationparser
+import csv
 
 # Simulation Constants
 NUM_SIMULATIONS=10000
@@ -29,6 +30,44 @@ SPLIT_CHARACTERS = '[ +-/*\(\)]'
 NUMERIC_RE = r"[0-9]+(\.[0-9]+)?"
 
 # Base Classes for Simulation
+class Simulation(object):
+    def __init__(self):
+        self.variables = {}
+        self.period = 0
+        self.iteration = 0
+
+    def add_variable(self, varname, variable):
+        self.variables[varname] = variable
+        variable.simulation = self
+
+    def get_variable(self, variable, iteration=None, period=None):
+        return self.variables[variable].calculated_values[iteration]
+
+    def run(self):
+        # rest of this is simulation stuff, you shouldn't need to modify much here
+        random.seed()
+
+        # need to insert some sort of reachability check on the elements here
+        while False in [x.calculated for x in self.variables.itervalues()]:
+            calculated_variables = []
+            for key, val in self.variables.iteritems():
+                if val.calculated == False:
+                    print "Calculating: %s" % (key)
+                    calculated_variables.append(val.calc())
+            if not(calculated_variables) or True not in calculated_variables:
+                raise Exception("Stalemate!")
+
+    def save_output(self, outfile):
+        print "Dumping data to %s" % (outfile)
+        f = open(outfile, "wb")
+        csvwriter = csv.writer(f, delimiter=" ")
+        rvkeys = self.variables.keys()
+        csvwriter.writerow(self.variables.keys())
+        for x in xrange(NUM_SIMULATIONS):
+            thisrow = [self.variables[y].calculated_values[x] for y in rvkeys]
+            csvwriter.writerow(thisrow)
+        f.close()
+
 class SimpleValue(object):
     def __init__(self, name, units, comments=None):
         object.__init__(self)
@@ -137,38 +176,28 @@ class CalculatedValue(SimpleValue):
     def __init__(self, name, units, equation, comments=None):
         SimpleValue.__init__(self, name, units, comments)
         self.equation = equation
-        self.variables = None
+        # print "Equation: ", self.equation
+        self.parsed_equation = equationparser.parseEquation(self.equation)
+        # print "Parsed: ", self.parsed_equation
+        # this is a clear hack...
+        self.variables = equationparser.getVariables(self.parsed_equation)
+        self.calculated = False
+        # print "Variables: ", self.variables
 
-    def calc(self, rvs, cvs):
+    def calc(self):
         """
         This is horribly inefficient for calculation right now as it generates
         and reparses an equation for each calculation.  I just don't want to
         write a better calculator right now.
         """
-        if self.variables == None:
-            self.variables = {}
-            varnames = [x for x in re.split(SPLIT_CHARACTERS, self.equation) if len(x) > 0]
-            for x in varnames:
-                if rvs.has_key(x):
-                    self.variables[x] = rvs[x]
-                elif cvs.has_key(x):
-                    self.variables[x] = cvs[x]
-                elif re.match(NUMERIC_RE, x):
-                    pass
-                else:
-                    raise Exception("Variable: %s not found", x)
-        if False not in [x.calculated for x in self.variables.itervalues()]:
-            keys = self.variables.keys()
-            keys.sort(key=lambda x: len(x), reverse=True)
-
+        if False not in [self.simulation.variables[x].calculated for x in self.variables]:
+            # print "Variables and Status: ", self.variables, [self.simulation.variables[x].calculated for x in self.variables]
             for iter in xrange(NUM_SIMULATIONS):
-                tmpEquation = self.equation
-                for key in keys:
-                    tmpEquation = tmpEquation.replace(key, unicode(self.variables[key].calculated_values[iter]))
-                self.calculated_values.append(fourFn.simpleEval(tmpEquation))
+                # print "Round %d!" % (iter)
+                # print "Eqn: %s" % (self.parsed_equation)
+                self.calculated_values.append(equationparser.evaluateEquation(self.parsed_equation, iter, self.simulation.variables))
+                # self.calculated_values.append(equationparser.evaluateStack(self.parsed_equation, iter, self.simulation.variables))
             self.calculated = True
             return True
         else:
             return False
-
-
